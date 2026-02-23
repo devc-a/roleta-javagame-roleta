@@ -66,7 +66,16 @@ public class Game {
     private void executeTurn(Scanner scanner) {
         BotAction action;
 
-        if (currentPlayer.getName().equalsIgnoreCase("bot")) {
+        if (currentPlayer.isHandcuffed()) {
+            System.out.println(currentPlayer.getName() + " está algemado e não pode atirar");
+            // let player still pick a use-item action if they want
+            if (currentPlayer.getName().equalsIgnoreCase("bot")) {
+                action = BotAction.USE_ITEM;
+            } else {
+                action = askPlayerAction(scanner);
+                // if they chose to shoot, we'll block it later
+            }
+        } else if (currentPlayer.getName().equalsIgnoreCase("bot")) {
             GameState state = new GameState(
                     currentPlayer,
                     otherPlayer,
@@ -86,7 +95,7 @@ public class Game {
             case USE_ITEM:
                 IitensType itemToUse = selectItemForCurrent(scanner);
                 if (itemToUse != null) {
-                    currentPlayer.useItem(itemToUse);
+                    currentPlayer.useItem(itemToUse, otherPlayer);
                 } else {
                     System.out.println(currentPlayer.getName() + " não possui item para usar");
                 }
@@ -94,6 +103,11 @@ public class Game {
                 break;
 
             case SHOOT:
+                if (currentPlayer.isHandcuffed()) {
+                    System.out.println("Impossível atirar enquanto está algemado");
+                    switchTurn(); // perder a vez
+                    break;
+                }
                 System.out.println(currentPlayer.getName() + " atirou em SI MESMO");
                 BulletType bullet = weapon.shoot();
                 reportShot(bullet, currentPlayer);
@@ -101,10 +115,24 @@ public class Game {
                 break;
 
             case SHOOT_ENEMY:
+                if (currentPlayer.isHandcuffed()) {
+                    System.out.println("Impossível atirar enquanto está algemado");
+                    switchTurn(); // ainda dá vez ao outro
+                    break;
+                }
                 System.out.println(currentPlayer.getName() + " atirou no INIMIGO");
                 BulletType bullet2 = weapon.shoot();
                 reportShot(bullet2, otherPlayer);
-                switchTurn();
+                // notify handcuff counter on the target if a shot was actually fired
+                if (bullet2 != null) {
+                    otherPlayer.notifyShotReceived(currentPlayer);
+                }
+                // if opponent is handcuffed by current and there are remaining shots,
+                // do NOT switch turn; shooter keeps control until the two shots
+                if (!(otherPlayer.isCuffedBy(currentPlayer)
+                        && otherPlayer.getHandcuffShotsRemaining() > 0)) {
+                    switchTurn();
+                }
                 break;
         }
 
@@ -192,6 +220,9 @@ public class Game {
         if (currentPlayer.getName().equalsIgnoreCase("bot")) {
             if (currentPlayer.getIitensByType(IitensType.CURA) != null) {
                 return IitensType.CURA;
+            }
+            if (currentPlayer.getIitensByType(IitensType.ALGEMA) != null) {
+                return IitensType.ALGEMA;
             }
             if (currentPlayer.getIitensByType(IitensType.LUPA) != null) {
                 return IitensType.LUPA;

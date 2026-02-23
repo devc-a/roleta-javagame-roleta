@@ -3,6 +3,7 @@ package itens;
 import model.Weapon;
 import java.util.Random;
 import model.Player;
+import itens.Algema;
 
 public class ItemFactory {
     private static final Random random = new Random();
@@ -19,6 +20,8 @@ public class ItemFactory {
                 return new DescarteBalas(weapon);
             case CERROTE:
                 return new Cerrote(weapon);
+            case ALGEMA:
+                return new Algema(player); // target will be set later when used
             default:
                 throw new IllegalArgumentException("Tipo de item desconhecido: " + itemType);
         }
